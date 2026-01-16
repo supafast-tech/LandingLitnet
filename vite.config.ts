@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { imagetools } from 'vite-imagetools';
 import path from 'path';
 
 // Плагин для удаления версий из импортов (@radix-ui/react-slot@1.1.2 → @radix-ui/react-slot)
@@ -51,7 +52,31 @@ function figmaAssetPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), removeVersionsPlugin(), figmaAssetPlugin()],
+  plugins: [react(), tailwindcss(), imagetools({
+    defaultDirectives: (url) => {
+      // Автоматически конвертируем PNG, JPG, JPEG в WebP для оптимизации
+      if (url.searchParams.has('raw')) {
+        return new URLSearchParams();
+      }
+      
+      // Для изображений из папки images/ применяем оптимизацию
+      if (url.pathname.includes('/images/')) {
+        return new URLSearchParams({
+          format: 'webp',
+          quality: '85',
+          lossless: 'false',
+        });
+      }
+      
+      return new URLSearchParams();
+    },
+    // Оптимизация для быстрой загрузки
+    extendOutputFormats: (builtins) => {
+      return {
+        ...builtins,
+      };
+    },
+  }), removeVersionsPlugin(), figmaAssetPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
@@ -60,5 +85,19 @@ export default defineConfig({
   server: {
     port: 3000,
     open: false,
+  },
+  // Оптимизация сборки
+  build: {
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          // Сохраняем WebP файлы с правильным расширением
+          if (assetInfo.name?.endsWith('.webp')) {
+            return 'assets/[name]-[hash][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
+      },
+    },
   },
 });

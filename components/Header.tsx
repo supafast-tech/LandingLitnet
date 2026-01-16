@@ -1,6 +1,6 @@
 import Logo from '../imports/Логотипы';
 import { ChevronDown } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getSettings, LandingSettings } from '../utils/settings';
 import { ContentData } from '../utils/api';
 
@@ -71,6 +71,27 @@ export function Header({ content = {} }: HeaderProps) {
     setBadgeTilt({ rotateX: 0, rotateY: 0 });
   };
 
+  // Мемоизация текстов для предотвращения скачков - используем content если есть, иначе settings
+  // Это предотвращает скачки при загрузке данных с сервера
+  const heroTitle = useMemo(() => {
+    // Если content загружен и есть значение - используем его, иначе settings
+    return content.hero_title || settings.heroTitle || '\u00A0';
+  }, [content.hero_title, settings.heroTitle]);
+  
+  const heroSubtitle = useMemo(() => {
+    return content.hero_subtitle || settings.heroSubtitle || '\u00A0';
+  }, [content.hero_subtitle, settings.heroSubtitle]);
+  
+  const heroButtonText = useMemo(() => {
+    // Используем стабильное значение: если content загружен, используем его, иначе settings (кэш)
+    const text = content.hero_button_text || settings.heroButtonText || 'Смотреть подарки';
+    return text;
+  }, [content.hero_button_text, settings.heroButtonText]);
+  
+  const badgeText = useMemo(() => {
+    return content.hero_badge || 'Зимнее чудо от Деда Мороза';
+  }, [content.hero_badge]);
+
   return (
     <>
       {/* Hero Section */}
@@ -102,26 +123,44 @@ export function Header({ content = {} }: HeaderProps) {
               onMouseLeave={handleBadgeMouseLeave}
             >
               <span className="text-xl">✨</span>
-              <h3 className="text-white drop-shadow-lg" style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: window.innerWidth < 768 ? '10pt' : '12pt', lineHeight: '0.9' }}>
-                Зимнее чудо от Деда Мороза
+              <h3 className="text-white drop-shadow-lg whitespace-nowrap" style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: window.innerWidth < 768 ? '10pt' : '12pt', lineHeight: '0.9', minWidth: '200px' }}>
+                {badgeText}
               </h3>
               <span className="text-xl">✨</span>
             </div>
           </div>
           
-          {/* Main title */}
-          <h1 className="text-white drop-shadow-2xl mb-6 max-w-6xl mx-auto md:text-[72pt] text-[36pt]" style={{ fontFamily: '"Argent CF", sans-serif', fontWeight: 400, fontStyle: 'italic', textShadow: '0 2px 15px rgba(0,0,0,0.3), 0 1px 6px rgba(0,0,0,0.2)', lineHeight: '0.9' }}>
-            {(content.hero_title || settings.heroTitle).split('\n').map((line, i) => (
+          {/* Main title - резервируем место чтобы текст не скакал */}
+          <h1 
+            className="text-white drop-shadow-2xl mb-6 max-w-6xl mx-auto md:text-[72pt] text-[36pt]" 
+            style={{ 
+              fontFamily: '"Argent CF", sans-serif', 
+              fontWeight: 400, 
+              fontStyle: 'italic', 
+              textShadow: '0 2px 15px rgba(0,0,0,0.3), 0 1px 6px rgba(0,0,0,0.2)', 
+              lineHeight: '0.9',
+              minHeight: 'clamp(72px, 10vw, 144px)' // Резервируем место для текста
+            }}
+          >
+            {heroTitle.split('\n').map((line, i, arr) => (
               <span key={i} className="font-[Argent_CF]">
-                {line}
-                {i < (content.hero_title || settings.heroTitle).split('\n').length - 1 && <br />}
+                {line || '\u00A0'}
+                {i < arr.length - 1 && <br />}
               </span>
             ))}
           </h1>
 
-          {/* Subtitle */}
-          <h3 className="text-white/90 drop-shadow-xl max-w-3xl mx-auto md:text-[16pt] text-[12pt]" style={{ fontFamily: 'Montserrat, sans-serif', lineHeight: '1.4', textShadow: '0 1px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)' }}>
-            {content.hero_subtitle || settings.heroSubtitle}
+          {/* Subtitle - резервируем место чтобы текст не скакал */}
+          <h3 
+            className="text-white/90 drop-shadow-xl max-w-3xl mx-auto md:text-[16pt] text-[12pt]" 
+            style={{ 
+              fontFamily: 'Montserrat, sans-serif', 
+              lineHeight: '1.4', 
+              textShadow: '0 1px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)',
+              minHeight: '24px' // Резервируем место для подзаголовка
+            }}
+          >
+            {heroSubtitle}
           </h3>
         </div>
 
@@ -136,9 +175,22 @@ export function Header({ content = {} }: HeaderProps) {
           >
             <div className="px-6 py-3 bg-gradient-to-r from-red-600 via-orange-600 to-red-600 rounded-full border-2 border-white/30" style={{ 
               boxShadow: '0 0 20px rgba(234, 88, 12, 0.8), 0 0 10px rgba(239, 68, 68, 0.6)',
+              minWidth: '262px', // Фиксированная ширина для предотвращения скачков
+              minHeight: '57px', // Фиксированная высота
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}>
-              <span className="text-white drop-shadow-lg" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '14pt', lineHeight: '0.9', fontWeight: 600 }}>
-                {content.hero_button_text || settings.heroButtonText}
+              <span className="text-white drop-shadow-lg whitespace-nowrap" style={{ 
+                fontFamily: 'Montserrat, sans-serif', 
+                fontSize: '14pt', 
+                lineHeight: '0.9', 
+                fontWeight: 600,
+                display: 'inline-block',
+                minWidth: '200px', // Резервируем место для текста
+                textAlign: 'center'
+              }}>
+                {heroButtonText}
               </span>
             </div>
             <ChevronDown className="w-5 h-5" />

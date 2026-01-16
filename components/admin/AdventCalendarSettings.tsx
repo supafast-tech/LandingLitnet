@@ -15,7 +15,7 @@ interface AdventCalendarSettingsProps {
   onBackToSite: () => void;
 }
 
-type TabType = 'gifts' | 'landing-content' | 'effects';
+type TabType = 'gifts' | 'landing-content' | 'effects' | 'placeholder';
 
 export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: AdventCalendarSettingsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('gifts');
@@ -30,6 +30,11 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
   const [isLoadingGifts, setIsLoadingGifts] = useState(true);
   const [landingContent, setLandingContent] = useState<ContentData>({});
   const [isLoadingContent, setIsLoadingContent] = useState(true);
+  const [showPlaceholder, setShowPlaceholder] = useState(false);
+  const [placeholderText, setPlaceholderText] = useState('Увы, адвент календарь уже закончился');
+  const [placeholderSubtext, setPlaceholderSubtext] = useState('До встречи в декабре 2026 года');
+  const [placeholderButtonText, setPlaceholderButtonText] = useState('На главную Литнета');
+  const [placeholderButtonLink, setPlaceholderButtonLink] = useState('https://litnet.com');
 
   useEffect(() => {
     loadGifts();
@@ -85,6 +90,9 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
     // По умолчанию показывать шестеренку (если не сохранено явно)
     setShowAdminIcon(savedShowAdminIcon === null ? true : savedShowAdminIcon === 'true');
     
+    // Настройки заглушки теперь загружаются из landingContent (глобальные настройки через ContentData)
+    // См. loadLandingContent() - там они загружаются из базы данных
+    
     // Load global settings from server
     try {
       const globalSettings = await fetchGlobalSettings();
@@ -101,6 +109,22 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
     try {
       const contentData = await fetchContent();
       setLandingContent(contentData);
+      
+      // Загружаем настройки заглушки из глобальных настроек ContentData
+      setShowPlaceholder(contentData.placeholder_enabled === 'true' || contentData.placeholder_enabled === true);
+      if (contentData.placeholder_text) {
+        setPlaceholderText(contentData.placeholder_text as string);
+      }
+      if (contentData.placeholder_subtext) {
+        setPlaceholderSubtext(contentData.placeholder_subtext as string);
+      }
+      if (contentData.placeholder_button_text) {
+        setPlaceholderButtonText(contentData.placeholder_button_text as string);
+      }
+      if (contentData.placeholder_button_link) {
+        setPlaceholderButtonLink(contentData.placeholder_button_link as string);
+      }
+      
       console.log('[ADMIN] Loaded landing content from database');
     } catch (error) {
       console.error('[ADMIN] Error loading landing content:', error);
@@ -147,7 +171,7 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
         console.log('[ADMIN] Gift saved to database successfully');
       } catch (error) {
         console.error('[ADMIN] Error saving gift:', error);
-        alert('Ошибка при сохранении под����рка. Прове��ьте консоль.');
+        alert('Ошибка при сохранении подарка. Проверьте консоль.');
       }
     }
   };
@@ -160,6 +184,35 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
     
     // Trigger content reload on main page to update footer
     window.dispatchEvent(new CustomEvent('contentUpdated'));
+  };
+
+  const handleSavePlaceholderSettings = async () => {
+    try {
+      // Сохраняем настройки заглушки в глобальные настройки ContentData (для всех пользователей)
+      await updateContent('placeholder_enabled', showPlaceholder.toString());
+      await updateContent('placeholder_text', placeholderText);
+      await updateContent('placeholder_subtext', placeholderSubtext);
+      await updateContent('placeholder_button_text', placeholderButtonText);
+      await updateContent('placeholder_button_link', placeholderButtonLink);
+      
+      // Обновляем локальное состояние
+      setLandingContent({
+        ...landingContent,
+        placeholder_enabled: showPlaceholder.toString(),
+        placeholder_text: placeholderText,
+        placeholder_subtext: placeholderSubtext,
+        placeholder_button_text: placeholderButtonText,
+        placeholder_button_link: placeholderButtonLink
+      });
+      
+      showSavedMessage();
+      
+      // Trigger content reload on main page (глобально для всех пользователей)
+      window.dispatchEvent(new CustomEvent('contentUpdated'));
+    } catch (error) {
+      console.error('[ADMIN] Error saving placeholder settings:', error);
+      alert('Ошибка при сохранении настроек заглушки. Проверьте консоль.');
+    }
   };
 
   const handleSaveContent = async () => {
@@ -216,9 +269,10 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
       {/* Snow Effect */}
       {settings.snowEnabled && <SnowEffect intensity={settings.snowIntensity} />}
       
-      {/* Затемнение всего фона */}
+      {/* Затемнение всего фона - минимальное для лучшей видимости картинки */}
       <div 
-        className="absolute inset-0 bg-black/60 pointer-events-none"
+        className="absolute inset-0 bg-black/30 pointer-events-none"
+        style={{ zIndex: 1 }}
       />
       
       {/* Content */}
@@ -272,39 +326,122 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-4 mb-8 flex-wrap">
+          <div className="flex gap-8 mb-8 flex-wrap border-b border-white/20" style={{ borderRadius: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
             <button
               onClick={() => setActiveTab('gifts')}
-              className={`px-6 py-3 rounded-xl transition-all ${
+              className={`px-4 py-3 transition-all relative ${
                 activeTab === 'gifts'
-                  ? 'bg-gradient-to-r from-red-600 via-orange-600 to-red-600 text-white border border-white/30'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/20'
+                  ? 'text-white'
+                  : 'text-white/70 hover:text-white'
               }`}
-              style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', fontWeight: 600 }}
+              style={{ 
+                fontFamily: 'Montserrat, sans-serif', 
+                fontSize: '12pt', 
+                fontWeight: 600,
+                borderBottom: activeTab === 'gifts' ? '2px solid #ef4444' : '2px solid transparent',
+                marginBottom: '-2px',
+                borderRadius: '0 !important' as any,
+                borderTopLeftRadius: '0 !important' as any,
+                borderTopRightRadius: '0 !important' as any,
+                borderBottomLeftRadius: '0 !important' as any,
+                borderBottomRightRadius: '0 !important' as any,
+                borderLeft: 'none',
+                borderRight: 'none',
+                borderTop: 'none',
+                outline: 'none',
+                background: 'transparent',
+                WebkitBorderRadius: 0,
+                MozBorderRadius: 0
+              }}
             >
               Подарки дней
             </button>
             <button
               onClick={() => setActiveTab('landing-content')}
-              className={`px-6 py-3 rounded-xl transition-all ${
+              className={`px-4 py-3 transition-all relative ${
                 activeTab === 'landing-content'
-                  ? 'bg-gradient-to-r from-red-600 via-orange-600 to-red-600 text-white border border-white/30'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/20'
+                  ? 'text-white'
+                  : 'text-white/70 hover:text-white'
               }`}
-              style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', fontWeight: 600 }}
+              style={{ 
+                fontFamily: 'Montserrat, sans-serif', 
+                fontSize: '12pt', 
+                fontWeight: 600,
+                borderBottom: activeTab === 'landing-content' ? '2px solid #ef4444' : '2px solid transparent',
+                marginBottom: '-2px',
+                borderRadius: '0 !important' as any,
+                borderTopLeftRadius: '0 !important' as any,
+                borderTopRightRadius: '0 !important' as any,
+                borderBottomLeftRadius: '0 !important' as any,
+                borderBottomRightRadius: '0 !important' as any,
+                borderLeft: 'none',
+                borderRight: 'none',
+                borderTop: 'none',
+                outline: 'none',
+                background: 'transparent',
+                WebkitBorderRadius: 0,
+                MozBorderRadius: 0
+              }}
             >
               Контент лендинга
             </button>
             <button
               onClick={() => setActiveTab('effects')}
-              className={`px-6 py-3 rounded-xl transition-all ${
+              className={`px-4 py-3 transition-all relative ${
                 activeTab === 'effects'
-                  ? 'bg-gradient-to-r from-red-600 via-orange-600 to-red-600 text-white border border-white/30'
-                  : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/20'
+                  ? 'text-white'
+                  : 'text-white/70 hover:text-white'
               }`}
-              style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', fontWeight: 600 }}
+              style={{ 
+                fontFamily: 'Montserrat, sans-serif', 
+                fontSize: '12pt', 
+                fontWeight: 600,
+                borderBottom: activeTab === 'effects' ? '2px solid #ef4444' : '2px solid transparent',
+                marginBottom: '-2px',
+                borderRadius: '0 !important' as any,
+                borderTopLeftRadius: '0 !important' as any,
+                borderTopRightRadius: '0 !important' as any,
+                borderBottomLeftRadius: '0 !important' as any,
+                borderBottomRightRadius: '0 !important' as any,
+                borderLeft: 'none',
+                borderRight: 'none',
+                borderTop: 'none',
+                outline: 'none',
+                background: 'transparent',
+                WebkitBorderRadius: 0,
+                MozBorderRadius: 0
+              }}
             >
               Эффекты
+            </button>
+            <button
+              onClick={() => setActiveTab('placeholder')}
+              className={`px-4 py-3 transition-all relative ${
+                activeTab === 'placeholder'
+                  ? 'text-white'
+                  : 'text-white/70 hover:text-white'
+              }`}
+              style={{ 
+                fontFamily: 'Montserrat, sans-serif', 
+                fontSize: '12pt', 
+                fontWeight: 600,
+                borderBottom: activeTab === 'placeholder' ? '2px solid #ef4444' : '2px solid transparent',
+                marginBottom: '-2px',
+                borderRadius: '0 !important' as any,
+                borderTopLeftRadius: '0 !important' as any,
+                borderTopRightRadius: '0 !important' as any,
+                borderBottomLeftRadius: '0 !important' as any,
+                borderBottomRightRadius: '0 !important' as any,
+                borderLeft: 'none',
+                borderRight: 'none',
+                borderTop: 'none',
+                outline: 'none',
+                background: 'transparent',
+                WebkitBorderRadius: 0,
+                MozBorderRadius: 0
+              }}
+            >
+              Заглушка
             </button>
           </div>
 
@@ -675,7 +812,7 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
                         onChange={(e) => setLandingContent({ ...landingContent, how_it_works_step2_desc: e.target.value })}
                         className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-orange-500 focus:outline-none transition-colors"
                         style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt' }}
-                        placeholder="Нажмите на активную дату и получите пр��мокод или бонус"
+                        placeholder="Нажмите на активную дату и получите промокод или бонус"
                       />
                     </div>
                   </div>
@@ -823,7 +960,7 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
                   Подвал (Footer)
                 </h2>
                 <p className="text-white/70 mb-4" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '11pt' }}>
-                  Что��ы скрыть ссылку - оставьте поле URL пустым
+                  Чтобы скрыть ссылку - оставьте поле URL пустым
                 </p>
                 <div className="space-y-4">
                   <div>
@@ -923,7 +1060,7 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
                         onChange={(e) => setLandingContent({ ...landingContent, footer_link_help: e.target.value })}
                         className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-orange-500 focus:outline-none transition-colors"
                         style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt' }}
-                        placeholder="Пользовательск��е согл��шение"
+                        placeholder="Пользовательское соглашение"
                       />
                     </div>
                     <div>
@@ -1160,6 +1297,138 @@ export function AdventCalendarSettings({ onBack, onLogout, onBackToSite }: Adven
                   >
                     <Save className="w-5 h-5 inline mr-2" />
                     Применить эффекты
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'placeholder' && (
+            <div 
+              className="p-6 rounded-2xl backdrop-blur-md"
+              style={{
+                background: 'linear-gradient(135deg, rgba(71, 85, 105, 0.3) 0%, rgba(100, 116, 139, 0.25) 50%, rgba(148, 163, 184, 0.3) 100%)',
+                boxShadow: 'inset 0 0 0 1pt rgba(255, 255, 255, 0.3)'
+              }}
+            >
+              <h2 className="text-white mb-6" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '16pt', fontWeight: 600 }}>
+                Настройки заглушки
+              </h2>
+              
+              <div className="space-y-6">
+                {/* Toggle для показа заглушки */}
+                <div 
+                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10"
+                  style={{ borderRadius: '12px' }}
+                >
+                  <div>
+                    <h3 className="text-white mb-2" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '14pt', fontWeight: 600 }}>
+                      Показывать заглушку
+                    </h3>
+                    <p className="text-white/70" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '11pt' }}>
+                      Включить/выключить отображение заглушки вместо календаря
+                    </p>
+                  </div>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showPlaceholder}
+                      onChange={(e) => setShowPlaceholder(e.target.checked)}
+                      className="w-6 h-6 rounded border border-white/30 bg-white/10 checked:bg-orange-500 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {/* Настройки заглушки */}
+                {showPlaceholder && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-white mb-2" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', fontWeight: 600 }}>
+                        Текст заглушки
+                      </label>
+                      <textarea
+                        value={placeholderText}
+                        onChange={(e) => setPlaceholderText(e.target.value)}
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-orange-500 focus:outline-none transition-colors resize-y"
+                        style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', minHeight: '60px' }}
+                        placeholder="Увы, адвент календарь уже закончился&#10;Для переноса строки используйте Enter (или Shift+Enter)"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white mb-2" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', fontWeight: 600 }}>
+                        Подзаголовок
+                      </label>
+                      <textarea
+                        value={placeholderSubtext}
+                        onChange={(e) => setPlaceholderSubtext(e.target.value)}
+                        rows={2}
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-orange-500 focus:outline-none transition-colors resize-y"
+                        style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', minHeight: '50px' }}
+                        placeholder="До встречи в декабре 2026 года&#10;Для переноса строки используйте Enter (или Shift+Enter)"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white mb-2" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', fontWeight: 600 }}>
+                        Текст кнопки
+                      </label>
+                      <input
+                        type="text"
+                        value={placeholderButtonText}
+                        onChange={(e) => setPlaceholderButtonText(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-orange-500 focus:outline-none transition-colors"
+                        style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt' }}
+                        placeholder="На главную Литнета"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white mb-2" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt', fontWeight: 600 }}>
+                        Ссылка кнопки
+                      </label>
+                      <input
+                        type="text"
+                        value={placeholderButtonLink}
+                        onChange={(e) => setPlaceholderButtonLink(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:border-orange-500 focus:outline-none transition-colors"
+                        style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '12pt' }}
+                        placeholder="https://litnet.com"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Save Button */}
+                <div className="flex items-center gap-4">
+                  {savedMessage && (
+                    <div 
+                      className="flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-400/40 rounded-lg backdrop-blur-sm animate-in fade-in duration-300"
+                      style={{ 
+                        fontFamily: 'Montserrat, sans-serif', 
+                        fontSize: '11pt', 
+                        fontWeight: 600,
+                        color: '#4ade80',
+                        boxShadow: '0 0 15px rgba(74, 222, 128, 0.3)'
+                      }}
+                    >
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                      Настройки сохранены
+                    </div>
+                  )}
+                  <button
+                    onClick={handleSavePlaceholderSettings}
+                    className="flex-1 py-3 px-6 bg-gradient-to-r from-red-600 via-orange-600 to-red-600 text-white rounded-xl hover:from-red-700 hover:via-orange-700 hover:to-red-700 transition-all duration-300 border border-white/30"
+                    style={{ 
+                      fontFamily: 'Montserrat, sans-serif', 
+                      fontSize: '14pt', 
+                      fontWeight: 700,
+                      boxShadow: '0 0 20px rgba(234, 88, 12, 0.5)'
+                    }}
+                  >
+                    <Save className="w-5 h-5 inline mr-2" />
+                    Сохранить настройки заглушки
                   </button>
                 </div>
               </div>

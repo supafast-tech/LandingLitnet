@@ -39,27 +39,27 @@ export function HowItWorks({ content = {} }: HowItWorksProps) {
   
   const icons = [Calendar, Gift, Clock, Sparkles];
   
-  // Use content from advent_content if available, otherwise use settings
+  // Use content from advent_content if available, otherwise use settings (без жестких фолбэков)
   const steps = [
     {
       icon: Calendar,
-      title: content.how_it_works_step1_title || settings.howItWorksSteps[0]?.title || 'Заходите каждый день',
-      description: content.how_it_works_step1_desc || settings.howItWorksSteps[0]?.description || ''
+      title: content.how_it_works_step1_title || settings.howItWorksSteps[0]?.title || '\u00A0',
+      description: content.how_it_works_step1_desc || settings.howItWorksSteps[0]?.description || '\u00A0'
     },
     {
       icon: Gift,
-      title: content.how_it_works_step2_title || settings.howItWorksSteps[1]?.title || 'Открывайте подарок',
-      description: content.how_it_works_step2_desc || settings.howItWorksSteps[1]?.description || ''
+      title: content.how_it_works_step2_title || settings.howItWorksSteps[1]?.title || '\u00A0',
+      description: content.how_it_works_step2_desc || settings.howItWorksSteps[1]?.description || '\u00A0'
     },
     {
       icon: Clock,
-      title: content.how_it_works_step3_title || settings.howItWorksSteps[2]?.title || 'Используйте на Литнете',
-      description: content.how_it_works_step3_desc || settings.howItWorksSteps[2]?.description || ''
+      title: content.how_it_works_step3_title || settings.howItWorksSteps[2]?.title || '\u00A0',
+      description: content.how_it_works_step3_desc || settings.howItWorksSteps[2]?.description || '\u00A0'
     },
     {
       icon: Sparkles,
-      title: content.how_it_works_step4_title || settings.howItWorksSteps[3]?.title || 'Собирайте все подарки',
-      description: content.how_it_works_step4_desc || settings.howItWorksSteps[3]?.description || ''
+      title: content.how_it_works_step4_title || settings.howItWorksSteps[3]?.title || '\u00A0',
+      description: content.how_it_works_step4_desc || settings.howItWorksSteps[3]?.description || '\u00A0'
     }
   ];
   

@@ -8,6 +8,7 @@ import { SnowEffect } from './components/SnowEffect';
 import AdminPage from './pages/AdminPage';
 import StatsPage from './pages/StatsPage';
 import HomePage from './pages/HomePage';
+import { PlaceholderBanner } from './components/PlaceholderBanner';
 import { getSettings, cacheGlobalSettings } from './utils/settings';
 import { fetchGlobalSettings, initializeCalendarDays, fetchAllCalendarDays, CalendarDay, fetchContent, ContentData } from './utils/api';
 import { Gift } from './types/gift';
@@ -64,7 +65,9 @@ export default function App() {
   const [currentRoute, setCurrentRoute] = useState(typeof window !== 'undefined' ? window.location.pathname : '/');
   const [isCurrentDayHovered, setIsCurrentDayHovered] = useState(false);
   const [settings, setSettings] = useState(getSettings());
-  const [isLoading, setIsLoading] = useState(true); // Start with loading state
+  const [contentOpacity, setContentOpacity] = useState(1); // Для плавного перехода контента
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Отслеживание первой загрузки
+  // Убрали isLoading и прелоадер - контент показывается сразу без скачков
   const [content, setContent] = useState<ContentData>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGift, setSelectedGift] = useState<Gift | null>(null);
@@ -95,19 +98,41 @@ export default function App() {
     if (typeof window === 'undefined') return;
     
     // Check current path
-    const checkRoute = () => {
+    const checkRoute = (skipTransition = false) => {
       const path = window.location.pathname;
       
-      // Redirect from / to /advent
-      if (path === '/') {
-        window.history.replaceState({}, '', '/advent');
-        setCurrentRoute('/advent');
-      } else {
-        setCurrentRoute(path);
+      // На первой загрузке не делаем переход
+      if (isInitialLoad || skipTransition) {
+        setIsInitialLoad(false);
+        if (path === '/') {
+          window.history.replaceState({}, '', '/advent');
+          setCurrentRoute('/advent');
+        } else {
+          setCurrentRoute(path);
+        }
+        return;
       }
+      
+      // Плавный переход: сначала скрываем контент
+      setContentOpacity(0);
+      
+      // После fade out меняем маршрут и показываем контент
+      setTimeout(() => {
+        if (path === '/') {
+          window.history.replaceState({}, '', '/advent');
+          setCurrentRoute('/advent');
+        } else {
+          setCurrentRoute(path);
+        }
+        
+        // Показываем новый контент после изменения маршрута
+        setTimeout(() => {
+          setContentOpacity(1);
+        }, 50);
+      }, 200); // 0.2 секунды для fade out
     };
     
-    checkRoute();
+    checkRoute(true); // Первая загрузка без перехода
     
     // Listen for popstate (back/forward buttons)
     window.addEventListener('popstate', checkRoute);
@@ -141,7 +166,7 @@ export default function App() {
     return () => {
       window.removeEventListener('popstate', checkRoute);
     };
-  }, []);
+  }, [isInitialLoad]);
 
   // Load advent calendar data only when on /advent page
   useEffect(() => {
@@ -149,8 +174,7 @@ export default function App() {
       return; // Don't load data for other pages
     }
 
-    // Reset loading state when entering advent page
-    setIsLoading(true);
+    // Убрали setIsLoading(true) - контент показывается сразу без прелоадера
 
     // Initialize data for advent calendar
     const initializeApp = async () => {
@@ -240,21 +264,13 @@ export default function App() {
           console.warn('Calendar days initialization failed, continuing with defaults:', err);
         });
         
-        // Минимальная задержка для плавности (200ms)
-        const elapsed = Date.now() - startTime;
-        const minDelay = 200;
-        if (elapsed < minDelay) {
-          await new Promise(resolve => setTimeout(resolve, minDelay - elapsed));
-        }
-        
-        // Hide loader after everything is loaded
-        setIsLoading(false);
+        // Данные загружены - контент показывается сразу без прелоадера и задержек
         
       } catch (error) {
         console.error('Error initializing app:', error);
         // Fallback to cached/default settings
         setSettings(getSettings());
-        setIsLoading(false);
+        // Контент показывается сразу без прелоадера
       }
     };
     
@@ -300,62 +316,77 @@ export default function App() {
   }, [currentRoute]);
   
   if (currentRoute === '/admin') {
-    return <AdminPage />;
+    return (
+      <div style={{ opacity: contentOpacity, transition: 'opacity 0.2s ease-in-out' }}>
+        <BackgroundFixed />
+        <AdminPage />
+      </div>
+    );
   }
   
   if (currentRoute === '/stats') {
-    return <StatsPage onBackToSite={() => {
-      window.history.pushState({}, '', '/advent');
-      setCurrentRoute('/advent');
-    }} />;
+    return (
+      <div style={{ opacity: contentOpacity, transition: 'opacity 0.2s ease-in-out' }}>
+        <BackgroundFixed />
+        <StatsPage onBackToSite={() => {
+          setContentOpacity(0);
+          setTimeout(() => {
+            window.history.pushState({}, '', '/advent');
+            setCurrentRoute('/advent');
+            setTimeout(() => setContentOpacity(1), 50);
+          }, 200);
+        }} />
+      </div>
+    );
   }
 
   // Home page - landing selector
   if (currentRoute === '/') {
-    return <HomePage />;
+    return (
+      <div style={{ opacity: contentOpacity, transition: 'opacity 0.2s ease-in-out' }}>
+        <BackgroundFixed />
+        <HomePage />
+      </div>
+    );
+  }
+  
+  // Check if placeholder should be shown - теперь из глобальных настроек ContentData
+  const showPlaceholder = content.placeholder_enabled === 'true' || content.placeholder_enabled === true;
+  // Используем только значения из content (без жестких фолбэков)
+  const placeholderText = (content.placeholder_text as string) || '\u00A0';
+  const placeholderSubtext = (content.placeholder_subtext as string) || '\u00A0';
+  const placeholderButtonText = (content.placeholder_button_text as string) || '\u00A0';
+  const placeholderButtonLink = (content.placeholder_button_link as string) || '#';
+
+  // Show placeholder if enabled (глобально для всех пользователей)
+  if (showPlaceholder) {
+    return (
+      <>
+        <SEOHead seoData={seoData} />
+        <BackgroundFixed />
+        <div style={{ opacity: contentOpacity, transition: 'opacity 0.2s ease-in-out' }}>
+          <PlaceholderBanner 
+            text={placeholderText}
+            subtext={placeholderSubtext}
+            buttonText={placeholderButtonText}
+            buttonLink={placeholderButtonLink}
+            snowEnabled={settings.snowEnabled}
+          />
+        </div>
+      </>
+    );
   }
   
   // Default - Advent Calendar page
   return (
     <>
       <SEOHead seoData={seoData} />
-      <div className="min-h-screen relative" style={{ background: 'transparent' }}>
-        <BackgroundFixed />
+      <BackgroundFixed />
+      <div className="min-h-screen relative" style={{ background: 'transparent', opacity: contentOpacity, transition: 'opacity 0.2s ease-in-out' }}>
         {settings.snowEnabled && !selectedGift && <SnowEffect intensity={settings.snowIntensity} />}
         
-        {/* Loading overlay with spinner */}
-        {isLoading && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-500"
-            style={{ 
-              background: 'rgba(0, 0, 0, 0.3)',
-              backdropFilter: 'blur(4px)'
-            }}
-          >
-            <div className="flex flex-col items-center gap-4">
-              {/* Spinning loader - same as in StatsPage */}
-              <div 
-                className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"
-                style={{ animationDuration: '0.6s' }}
-              ></div>
-              <p 
-                className="text-white text-lg"
-                style={{ 
-                  fontFamily: 'Montserrat, sans-serif',
-                  textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
-                }}
-              >
-                Подготовливаем адвент календарь
-              </p>
-            </div>
-          </div>
-        )}
-        
-        {/* Main content with fade-in animation */}
-        <div 
-          className="transition-opacity duration-500"
-          style={{ opacity: isLoading ? 0 : 1 }}
-        >
+        {/* Main content - показываем сразу без прелоадера */}
+        <div>
           {/* Font Preload */}
           <FontPreload />
           
@@ -385,15 +416,15 @@ export default function App() {
                 <div className="text-center mb-12">
                   <div style={{ textShadow: '0 4px 20px rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.2)' }}>
                     <h2 className="text-white drop-shadow-xl mb-4 md:text-[52pt] text-[32pt]" style={{ fontFamily: '"Argent CF", sans-serif', fontWeight: 400, fontStyle: 'italic', lineHeight: '0.9' }}>
-                      {(content.calendar_title || settings.calendarTitle).split('\n').map((line, i) => (
+                      {((content.calendar_title || settings.calendarTitle || '\u00A0').split('\n').map((line, i, arr) => (
                         <span key={i} className="font-[Argent_CF]">
-                          {line}
-                          {i < (content.calendar_title || settings.calendarTitle).split('\n').length - 1 && <br />}
+                          {line || '\u00A0'}
+                          {i < arr.length - 1 && <br />}
                         </span>
-                      ))}
+                      )))}
                     </h2>
                     <p className="text-white/80 md:text-[18pt] text-[14pt]" style={{ fontFamily: 'Montserrat, sans-serif', lineHeight: '1.4' }}>
-                      {content.calendar_subtitle || settings.calendarSubtitle}
+                      {content.calendar_subtitle || settings.calendarSubtitle || '\u00A0'}
                     </p>
                   </div>
                 </div>
@@ -434,7 +465,7 @@ export default function App() {
                       href={content.calendar_button_link || settings.returnButtonLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block transition-all duration-300 group-hover:drop-shadow-[0_0_10px_rgba(249,115,22,0.6)]"
+                      className="block transition-all duration-300"
                     >
                       <span 
                         className="text-white"
@@ -445,7 +476,7 @@ export default function App() {
                           lineHeight: '1'
                         }}
                       >
-                        {content.calendar_button_text || settings.returnButtonText}
+                        {content.calendar_button_text || settings.returnButtonText || '\u00A0'}
                       </span>
                     </a>
                   </GlareCard>
@@ -454,10 +485,8 @@ export default function App() {
               </div>
             </FadeInOnScroll>
             
-            {/* Footer */}
-            <FadeInOnScroll delay={400}>
-              <Footer content={content} />
-            </FadeInOnScroll>
+            {/* Footer - всегда отображается без анимации */}
+            <Footer content={content} />
           </div>
         </div>
       </div>

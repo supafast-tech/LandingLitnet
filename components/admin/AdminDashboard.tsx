@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, LogOut, Home, Calendar, TrendingUp } from 'lucide-react';
-import { AdminBackground } from './AdminBackground';
+import BackgroundFixed from '../BackgroundFixed';
 import { SnowEffect } from '../SnowEffect';
 import { AdventCalendarSettings } from './AdventCalendarSettings';
 import { StatsSettings } from './StatsSettings_NEW';
@@ -106,14 +106,15 @@ export function AdminDashboard({ onLogout, onBack }: AdminDashboardProps) {
   return (
     <div className="min-h-screen relative">
       {/* Fixed Background */}
-      <AdminBackground />
+      <BackgroundFixed />
       
       {/* Snow Effect */}
       {settings.snowEnabled && <SnowEffect intensity={settings.snowIntensity} />}
       
-      {/* Затемнение всего фона */}
+      {/* Затемнение всего фона - уменьшено для лучшей видимости картинки */}
       <div 
-        className="absolute inset-0 bg-black/60 pointer-events-none"
+        className="absolute inset-0 bg-black/30 pointer-events-none"
+        style={{ zIndex: 1 }}
       />
       
       {/* Content */}

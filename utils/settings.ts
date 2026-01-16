@@ -78,7 +78,7 @@ const defaultSettings: LandingSettings = {
   returnButtonText: 'Вернуться на главную Литнета',
   returnButtonLink: 'https://litnet.com',
 
-  footerCopyright: '© 2025 Litnet. Все права защищены.',
+  footerCopyright: '© 2026 Litnet. Все права защищены.',
   footerLinks: [
     { text: 'Правила акции', link: '#' },
     { text: 'Политика конфиденциальности', link: '#' },

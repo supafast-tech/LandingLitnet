@@ -1,29 +1,48 @@
-import adventBackgroundImage from '../images/advent-back-25.png';
+// Автоматическая конвертация в WebP при сборке для оптимизации
+import adventBackgroundImage from '../images/advent-back-25.png?format=webp&quality=85';
 import { useEffect, useState } from 'react';
 
 export default function BackgroundFixed() {
-  const [backgroundPositionY, setBackgroundPositionY] = useState(30);
+  // Начальное смещение увеличено на 128pt (с 30 до 158 для опускания картинки ниже)
+  const [backgroundPositionY, setBackgroundPositionY] = useState(158);
   const [scrollOpacity, setScrollOpacity] = useState(0);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   
   useEffect(() => {
+    let scrollFrame: number | null = null;
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = setTimeout(() => {
+        setIsMobile(window.innerWidth < 768);
+      }, 150); // Debounce resize
     };
     
     const handleScroll = () => {
-      const scrolled = window.scrollY;
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      const scrollProgress = Math.min(scrolled / Math.max(maxScroll, 1), 1);
+      // Throttle scroll с requestAnimationFrame
+      if (scrollFrame) {
+        return;
+      }
       
-      // Начинаем с 30% (центр Деда Мороза), максимум 70% (больше снега снизу)
-      const newPosition = 30 + (scrollProgress * 40);
-      setBackgroundPositionY(newPosition);
-      
-      // Затемнение появляется когда скролл больше высоты экрана
-      const heroHeight = Math.max(window.innerHeight, 1);
-      const darkenOpacity = Math.min(scrolled / heroHeight, 1);
-      setScrollOpacity(darkenOpacity);
+      scrollFrame = requestAnimationFrame(() => {
+        const scrolled = window.scrollY;
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const scrollProgress = Math.min(scrolled / Math.max(maxScroll, 1), 1);
+        
+        // Начинаем с 158% (опущено ниже на 128pt), максимум 198% (больше снега снизу)
+        const newPosition = 158 + (scrollProgress * 40);
+        setBackgroundPositionY(newPosition);
+        
+        // Затемнение появляется когда скролл больше высоты экрана
+        const heroHeight = Math.max(window.innerHeight, 1);
+        const darkenOpacity = Math.min(scrolled / heroHeight, 1);
+        setScrollOpacity(darkenOpacity);
+        
+        scrollFrame = null;
+      });
     };
     
     handleScroll(); // Initial call
@@ -33,6 +52,12 @@ export default function BackgroundFixed() {
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleResize);
+      if (scrollFrame) {
+        cancelAnimationFrame(scrollFrame);
+      }
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
     };
   }, []);
   
@@ -54,10 +79,10 @@ export default function BackgroundFixed() {
             }}
             style={{
               objectPosition: isMobile 
-                ? `70% ${backgroundPositionY + 64}%`  // Мобилка: сдвиг вправо на 70%, опущено на 64pt
-                : `center ${backgroundPositionY + 64}%`, // Опущено на 64pt
-              transform: 'scale(1.20)',
-              transition: 'object-position 0.1s linear'
+                ? `70% ${backgroundPositionY}%`  // Мобилка: сдвиг вправо на 70%
+                : `center ${backgroundPositionY}%`, // Центр по горизонтали
+              transform: 'scale(1.20) translateY(64px)', // Опущено на 64px (64pt ≈ 64px)
+              transition: 'object-position 0.1s linear, transform 0.1s linear'
             }}
           />
         )}

@@ -50,12 +50,12 @@ export function Footer({ content = {}, landingType = 'advent' }: FooterProps) {
     console.log('[Footer] admin_show_admin_icon from localStorage:', savedShowAdminIcon);
   }, [forceUpdate]);
   
-  // Social links from database with fallback to defaults
+  // Social links from database (используем только с сервера, без жестких фолбэков)
   const socialLinks = {
-    vk: content.social_vk || 'https://vk.com/litnetcom',
-    telegram: content.social_telegram || 'https://t.me/litnet_official',
-    ok: content.social_ok || 'https://ok.ru/litnet',
-    dzen: content.social_dzen || 'https://dzen.ru/litnet'
+    vk: content.social_vk || settings.socialLinks?.vk || '#',
+    telegram: content.social_telegram || settings.socialLinks?.telegram || '#',
+    ok: content.social_ok || settings.socialLinks?.ok || '#',
+    dzen: content.social_dzen || settings.socialLinks?.dzen || '#'
   };
   
   useEffect(() => {
@@ -99,7 +99,7 @@ export function Footer({ content = {}, landingType = 'advent' }: FooterProps) {
           <div className="text-white/70" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '11pt' }}>
             {landingType === 'stats' 
               ? 'Итоги 2025 года' 
-              : (content.footer_description || 'Адвент календарь 2025')}
+              : (content.footer_description || settings.footerCopyright || '\u00A0')}
           </div>
         </div>
         
@@ -145,8 +145,13 @@ export function Footer({ content = {}, landingType = 'advent' }: FooterProps) {
       </div>
       
       {/* Bottom section - copyright and links */}
-      <div className="mx-auto md:mt-16 mt-8 flex flex-col md:flex-row items-center md:justify-end gap-4 text-white/60 relative" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '11pt', maxWidth: '1080pt', width: '100%' }}>
-        {/* Links - Right (copyright removed) */}
+      <div className="mx-auto md:mt-16 mt-8 flex flex-col md:flex-row items-center md:justify-between gap-4 text-white/60 relative" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '11pt', maxWidth: '1080pt', width: '100%' }}>
+        {/* Copyright - Left (same style as links) */}
+        <div className="text-white/60 whitespace-nowrap" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '11pt' }}>
+          {(content.footer_copyright || settings.footerCopyright || '© 2026 Litnet. Все права защищены.').replace('2025', '2026')}
+        </div>
+        
+        {/* Links - Right */}
         <div className="flex flex-wrap items-center justify-center gap-3">
           {/* Build visible links array */}
           {(() => {
@@ -155,7 +160,7 @@ export function Footer({ content = {}, landingType = 'advent' }: FooterProps) {
             // Link 1 - only add if has URL
             if (content.footer_link_terms_url && content.footer_link_terms_url.trim() !== '') {
               links.push({
-                text: content.footer_link_terms || 'Правила акции',
+                text: content.footer_link_terms || '\u00A0',
                 url: content.footer_link_terms_url
               });
             }
@@ -163,7 +168,7 @@ export function Footer({ content = {}, landingType = 'advent' }: FooterProps) {
             // Link 2 - only add if has URL
             if (content.footer_link_privacy_url && content.footer_link_privacy_url.trim() !== '') {
               links.push({
-                text: content.footer_link_privacy || 'Политика конфиденциальности',
+                text: content.footer_link_privacy || '\u00A0',
                 url: content.footer_link_privacy_url
               });
             }
@@ -171,7 +176,7 @@ export function Footer({ content = {}, landingType = 'advent' }: FooterProps) {
             // Link 3 - only add if has URL
             if (content.footer_link_help_url && content.footer_link_help_url.trim() !== '') {
               links.push({
-                text: content.footer_link_help || 'Пользовательское соглашение',
+                text: content.footer_link_help || '\u00A0',
                 url: content.footer_link_help_url
               });
             }
