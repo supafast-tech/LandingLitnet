@@ -21,20 +21,8 @@ import { SEOHead } from './components/SEOHead';
 import { fetchAdventSeo, SeoData } from './utils/seoApi';
 import { getDayStatus } from './utils/gifts';
 
-// Default SEO values
-const DEFAULT_SEO: SeoData = {
-  meta_title: 'Адвент календарь 2025 | Litnet',
-  meta_description: 'Открывайте подарки каждый день в адвент календаре Litnet 2025',
-  meta_keywords: 'litnet, адвент календарь, 2025, книги, подарки',
-  og_title: 'Адвент календарь 2025 | Litnet',
-  og_description: 'Открывайте подарки каждый день в адвент календаре Litnet 2025',
-  og_image_url: 'https://phyiwsserncatvhleuor.supabase.co/storage/v1/object/public/advent/og-image-advent.jpg',
-  og_url: 'https://litnet.com/advent',
-  twitter_card: 'summary_large_image',
-  twitter_title: 'Адвент календарь 2025 | Litnet',
-  twitter_description: 'Открывайте подарки каждый день в адвент календаре Litnet 2025',
-  twitter_image_url: 'https://phyiwsserncatvhleuor.supabase.co/storage/v1/object/public/advent/og-image-advent.jpg'
-};
+// SEO данные загружаются ТОЛЬКО из БД (таблица advent_seo)
+// Не используем хардкод - все значения из базы данных
 
 // Convert CalendarDay from API to Gift for frontend
 function calendarDayToGift(day: CalendarDay): Gift {
@@ -71,7 +59,20 @@ export default function App() {
   const [content, setContent] = useState<ContentData>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGift, setSelectedGift] = useState<Gift | null>(null);
-  const [seoData, setSeoData] = useState<SeoData>(DEFAULT_SEO);
+  // Инициализация пустым объектом - данные загрузятся из БД
+  const [seoData, setSeoData] = useState<SeoData>({
+    meta_title: '',
+    meta_description: '',
+    meta_keywords: '',
+    og_title: '',
+    og_description: '',
+    og_image_url: '',
+    og_url: '',
+    twitter_card: '',
+    twitter_title: '',
+    twitter_description: '',
+    twitter_image_url: ''
+  });
   
   // Expose gifts to window for debugging
   useEffect(() => {
@@ -189,13 +190,14 @@ export default function App() {
           fetchGlobalSettings()
         ]);
 
-        // Обработка SEO данных
+        // Обработка SEO данных - ТОЛЬКО из БД (advent_seo)
         if (seoResult.status === 'fulfilled') {
           setSeoData(seoResult.value);
-          console.log('[APP] Loaded advent SEO from database');
+          console.log('[APP] Loaded advent SEO from database (advent_seo table):', seoResult.value);
         } else {
-          console.error('[APP] Error loading SEO, using defaults:', seoResult.reason);
-          setSeoData(DEFAULT_SEO);
+          console.error('[APP] Error loading SEO from database (advent_seo):', seoResult.reason);
+          // Оставляем пустые значения, не используем DEFAULT_SEO - все должно быть из БД
+          console.warn('[APP] SEO data will remain empty until loaded from database');
         }
 
         // Обработка контента

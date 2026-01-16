@@ -3,8 +3,8 @@ import adventBackgroundImage from '../images/advent-back-25.png?format=webp&qual
 import { useEffect, useState } from 'react';
 
 export default function BackgroundFixed() {
-  // Начальное смещение увеличено на 128pt (с 30 до 158 для опускания картинки ниже)
-  const [backgroundPositionY, setBackgroundPositionY] = useState(158);
+  // ФИКСИРОВАННАЯ позиция БЕЗ параллакса - одинаковая на локале и на Vercel
+  // Позиция не меняется при скролле
   const [scrollOpacity, setScrollOpacity] = useState(0);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   
@@ -22,23 +22,15 @@ export default function BackgroundFixed() {
     };
     
     const handleScroll = () => {
-      // Throttle scroll с requestAnimationFrame
+      // ТОЛЬКО для затемнения - БЕЗ изменения позиции картинки (параллакс убран)
       if (scrollFrame) {
         return;
       }
       
       scrollFrame = requestAnimationFrame(() => {
-        const scrolled = window.scrollY;
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        const scrollProgress = Math.min(scrolled / Math.max(maxScroll, 1), 1);
-        
-        // Начинаем с 158% (опущено ниже на 128pt), максимум 198% (больше снега снизу)
-        const newPosition = 158 + (scrollProgress * 40);
-        setBackgroundPositionY(newPosition);
-        
         // Затемнение появляется когда скролл больше высоты экрана
         const heroHeight = Math.max(window.innerHeight, 1);
-        const darkenOpacity = Math.min(scrolled / heroHeight, 1);
+        const darkenOpacity = Math.min(window.scrollY / heroHeight, 1);
         setScrollOpacity(darkenOpacity);
         
         scrollFrame = null;
@@ -78,11 +70,13 @@ export default function BackgroundFixed() {
               e.currentTarget.style.display = 'none';
             }}
             style={{
+              // ФИКСИРОВАННАЯ позиция БЕЗ параллакса - одинаковая на локале и Vercel
               objectPosition: isMobile 
-                ? `70% ${backgroundPositionY}%`  // Мобилка: сдвиг вправо на 70%
-                : `center ${backgroundPositionY}%`, // Центр по горизонтали
+                ? '70% 158%'  // Мобилка: сдвиг вправо на 70%, фиксированная позиция по Y
+                : 'center 158%', // Центр по горизонтали, фиксированная позиция по Y
               transform: 'scale(1.20) translateY(64px)', // Опущено на 64px (64pt ≈ 64px)
-              transition: 'object-position 0.1s linear, transform 0.1s linear'
+              // Без transition для objectPosition - позиция не меняется
+              transition: 'transform 0.1s linear'
             }}
           />
         )}
