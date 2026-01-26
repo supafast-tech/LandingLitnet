@@ -1,5 +1,5 @@
-// Автоматическая конвертация в WebP при сборке для оптимизации
-import adventBackgroundImage from '../images/advent-back-25.png?format=webp&quality=85';
+// Автоматическая конвертация в WebP при сборке для оптимизации (настроено в vite.config.ts)
+import adventBackgroundImage from '../images/advent-back-25.png';
 import { useEffect, useState } from 'react';
 
 export default function BackgroundFixed() {

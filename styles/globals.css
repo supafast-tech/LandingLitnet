@@ -17,8 +17,8 @@
 
 /* iOS Safari styling for full viewport coverage */
 html, body {
-  background-color: white !important;
-  background: white !important;
+  background-color: transparent !important;
+  background: transparent !important;
   min-height: 100vh;
   min-height: -webkit-fill-available;
 }
@@ -47,7 +47,7 @@ img {
     width: 100%;
     position: fixed;
     overflow: hidden;
-    background-color: white !important;
+    background-color: transparent !important;
     /* Prevent overscroll */
     overscroll-behavior: none;
   }
@@ -59,15 +59,15 @@ img {
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    background-color: white !important;
+    background-color: transparent !important;
     /* Prevent overscroll */
     overscroll-behavior: none;
   }
   
-  /* Force white background for all elements to prevent black bars */
+  /* Force transparent background for all elements to show background image */
   #root,
   #__next {
-    background-color: white !important;
+    background-color: transparent !important;
     min-height: 100vh;
     overscroll-behavior: none;
   }
